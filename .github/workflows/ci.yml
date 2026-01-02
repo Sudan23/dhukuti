@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
     
     services:
       postgres:
@@ -87,6 +93,10 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
