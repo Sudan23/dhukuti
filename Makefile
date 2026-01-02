@@ -22,17 +22,17 @@ clean: ## Clean build artifacts
 
 docker-up: ## Start Docker containers
 	@echo "Starting Docker containers..."
-	@docker-compose up -d postgres
+	@docker compose up -d postgres
 	@echo "Waiting for PostgreSQL to be ready..."
 	@sleep 5
 
 docker-down: ## Stop Docker containers
 	@echo "Stopping Docker containers..."
-	@docker-compose down
+	@docker compose down
 
 docker-build: ## Build and start all Docker containers
 	@echo "Building and starting all Docker containers..."
-	@docker-compose up --build -d
+	@docker compose up --build -d
 
 seed: ## Run database seed
 	@echo "Running database seed..."
