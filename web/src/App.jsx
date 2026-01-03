@@ -3,6 +3,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CircleDetails from './pages/CircleDetails';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/circles/:id" element={<CircleDetails />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
