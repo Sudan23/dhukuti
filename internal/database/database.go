@@ -44,6 +44,9 @@ func Migrate() error {
 		&models.User{},
 		&models.Circle{},
 		&models.CircleMember{},
+		&models.MemberApproval{},
+		&models.Contribution{},
+		&models.AmountApproval{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)

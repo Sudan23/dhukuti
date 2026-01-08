@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react';
 export default function CreateCircleModal({ isOpen, onClose, onSuccess }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -16,11 +17,16 @@ export default function CreateCircleModal({ isOpen, onClose, onSuccess }) {
         setError('');
 
         try {
-            await api.post('/circles', { name, description });
+            await api.post('/circles', {
+                name,
+                description,
+                amount_per_member: parseInt(amount)
+            });
             onSuccess();
             onClose();
             setName('');
             setDescription('');
+            setAmount('');
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to create circle');
         } finally {
@@ -71,6 +77,21 @@ export default function CreateCircleModal({ isOpen, onClose, onSuccess }) {
                             placeholder="What is this circle for?"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Saving Amount per Member
+                        </label>
+                        <input
+                            type="number"
+                            required
+                            min="1"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                            placeholder="e.g., 1000"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
                         />
                     </div>
 

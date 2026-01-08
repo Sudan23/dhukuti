@@ -51,14 +51,16 @@ func main() {
 	// Create sample circles
 	circles := []models.Circle{
 		{
-			Name:        "Family Circle",
-			Description: "Family savings and expenses",
-			CreatorID:   users[0].ID,
+			Name:            "Family Circle",
+			Description:     "Family savings and expenses",
+			AmountPerMember: 1000,
+			CreatorID:       users[0].ID,
 		},
 		{
-			Name:        "Friends Group",
-			Description: "Friends' shared expenses",
-			CreatorID:   users[1].ID,
+			Name:            "Friends Group",
+			Description:     "Friends' shared expenses",
+			AmountPerMember: 500,
+			CreatorID:       users[1].ID,
 		},
 	}
 
@@ -80,6 +82,7 @@ func main() {
 			CircleID: circles[i].ID,
 			UserID:   circles[i].CreatorID,
 			Role:     "admin",
+			Status:   "active",
 		}
 		if err := database.DB.Create(&member).Error; err != nil {
 			log.Fatalf("Failed to add creator as member: %v", err)
@@ -93,6 +96,7 @@ func main() {
 			CircleID: circles[0].ID,
 			UserID:   users[1].ID,
 			Role:     "member",
+			Status:   "active",
 		}
 		var existing models.CircleMember
 		if err := database.DB.Where("circle_id = ? AND user_id = ?", familyMember.CircleID, familyMember.UserID).First(&existing).Error; err != nil {

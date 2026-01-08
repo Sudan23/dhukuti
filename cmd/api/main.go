@@ -1,14 +1,14 @@
 package main
 
 import (
-	"log"
-	"os"
+"log"
+"os"
 
-	"github.com/Sudan23/dhukuti/internal/config"
-	"github.com/Sudan23/dhukuti/internal/database"
-	"github.com/Sudan23/dhukuti/internal/handlers"
-	"github.com/Sudan23/dhukuti/internal/middleware"
-	"github.com/gin-gonic/gin"
+"github.com/Sudan23/dhukuti/internal/config"
+"github.com/Sudan23/dhukuti/internal/database"
+"github.com/Sudan23/dhukuti/internal/handlers"
+"github.com/Sudan23/dhukuti/internal/middleware"
+"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -38,13 +38,28 @@ func main() {
 	// Setup router
 	router := gin.Default()
 
+	// CORS Middleware
+	router.Use(func(c *gin.Context) {
+c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
+
 	// Health check
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"service": "dhukuti-api",
-		})
-	})
+c.JSON(200, gin.H{
+"status":  "ok",
+"service": "dhukuti-api",
+})
+})
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
@@ -65,7 +80,12 @@ func main() {
 			{
 				circles.POST("", circleHandler.CreateCircle)
 				circles.GET("", circleHandler.ListCircles)
+				circles.GET("/:id", circleHandler.GetCircle)
 				circles.POST("/:id/members", circleHandler.AddMember)
+				circles.POST("/:id/approve/:user_id", circleHandler.ApproveMember)
+				circles.POST("/:id/contributions", circleHandler.RecordContribution)
+				circles.POST("/:id/propose-amount", circleHandler.ProposeAmount)
+				circles.POST("/:id/approve-amount", circleHandler.ApproveAmountChange)
 			}
 		}
 	}
