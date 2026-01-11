@@ -1,14 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '../lib/api';
-import { ArrowLeft, UserPlus, Users, Loader2, CheckCircle, Wallet, Clock, AlertCircle } from 'lucide-react';
+import { useCircleDetails } from '../hooks/useCircles';
+import { getCurrentUser } from '../utils/auth';
+import { MEMBER_STATUS, SUCCESS_MESSAGES } from '../constants';
+import CircleDetailsSkeleton from '../components/skeletons/CircleDetailsSkeleton';
+import ContributionHistory from '../components/circle/ContributionHistory';
+import { ArrowLeft, UserPlus, Users, Loader2, CheckCircle, Wallet, Clock, AlertCircle, History } from 'lucide-react';
 
 export default function CircleDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [circle, setCircle] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const { circle, loading, error, refetch } = useCircleDetails(id);
 
     // Add member state
     const [newMemberId, setNewMemberId] = useState('');
@@ -21,21 +25,8 @@ export default function CircleDetails() {
     const [showProposeModal, setShowProposeModal] = useState(false);
     const [newProposedAmount, setNewProposedAmount] = useState('');
 
-    useEffect(() => {
-        fetchCircleDetails();
-    }, [id]);
-
-    const fetchCircleDetails = async () => {
-        try {
-            const response = await api.get(`/circles/${id}`);
-            setCircle(response.data);
-        } catch (err) {
-            setError('Failed to load circle details');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Tab state
+    const [activeTab, setActiveTab] = useState('overview'); // 'overview' or 'history'
 
     const handleAddMember = async (e) => {
         e.preventDefault();
@@ -48,9 +39,12 @@ export default function CircleDetails() {
                 role: 'member'
             });
             setNewMemberId('');
-            fetchCircleDetails(); // Refresh list
+            toast.success(SUCCESS_MESSAGES.MEMBER_INVITED);
+            refetch();
         } catch (err) {
-            setAddError(err.response?.data?.error || 'Failed to add member');
+            const errorMsg = err.response?.data?.error || 'Failed to add member';
+            setAddError(errorMsg);
+            toast.error(errorMsg);
         } finally {
             setAddingMember(false);
         }
@@ -60,9 +54,10 @@ export default function CircleDetails() {
         setProcessing(true);
         try {
             await api.post(`/circles/${id}/approve/${userId}`);
-            fetchCircleDetails();
+            toast.success(SUCCESS_MESSAGES.MEMBER_APPROVED);
+            refetch();
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to approve member');
+            toast.error(err.response?.data?.error || 'Failed to approve member');
         } finally {
             setProcessing(false);
         }
@@ -72,10 +67,10 @@ export default function CircleDetails() {
         setProcessing(true);
         try {
             await api.post(`/circles/${id}/contributions`);
-            alert('Contribution recorded successfully!');
-            fetchCircleDetails();
+            toast.success(SUCCESS_MESSAGES.CONTRIBUTION_RECORDED);
+            refetch();
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to record contribution');
+            toast.error(err.response?.data?.error || 'Failed to record contribution');
         } finally {
             setProcessing(false);
         }
@@ -90,9 +85,10 @@ export default function CircleDetails() {
             });
             setShowProposeModal(false);
             setNewProposedAmount('');
-            fetchCircleDetails();
+            toast.success('Amount change proposed successfully!');
+            refetch();
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to propose amount change');
+            toast.error(err.response?.data?.error || 'Failed to propose amount change');
         } finally {
             setProcessing(false);
         }
@@ -102,20 +98,17 @@ export default function CircleDetails() {
         setProcessing(true);
         try {
             await api.post(`/circles/${id}/approve-amount`);
-            fetchCircleDetails();
+            toast.success(SUCCESS_MESSAGES.AMOUNT_APPROVED);
+            refetch();
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to approve amount change');
+            toast.error(err.response?.data?.error || 'Failed to approve amount change');
         } finally {
             setProcessing(false);
         }
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-            </div>
-        );
+        return <CircleDetailsSkeleton />;
     }
 
     if (error || !circle) {
@@ -199,8 +192,8 @@ export default function CircleDetails() {
                                                     <div
                                                         key={approval.user_id}
                                                         className={`flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border text-xs font-semibold transition-colors ${approval.approved
-                                                                ? 'bg-green-50 border-green-200 text-green-700'
-                                                                : 'bg-white border-amber-100 text-slate-400'
+                                                            ? 'bg-green-50 border-green-200 text-green-700'
+                                                            : 'bg-white border-amber-100 text-slate-400'
                                                             }`}
                                                     >
                                                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${approval.approved ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-500'
@@ -224,7 +217,7 @@ export default function CircleDetails() {
                         <div className="flex flex-col gap-2">
                             <button
                                 onClick={handleContribute}
-                                disabled={processing || circle.members?.find(m => m.id === JSON.parse(localStorage.getItem('user'))?.id)?.status !== 'active' || circle.proposed_amount > 0}
+                                disabled={processing || circle.members?.find(m => m.id === getCurrentUser()?.id)?.status !== MEMBER_STATUS.ACTIVE || circle.proposed_amount > 0}
                                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 flex items-center gap-2"
                                 title={circle.proposed_amount > 0 ? "Cannot deposit while amount change is pending" : ""}
                             >
@@ -232,7 +225,7 @@ export default function CircleDetails() {
                                 Deposit Saving
                             </button>
 
-                            {circle.creator_id === JSON.parse(localStorage.getItem('user'))?.id && (!circle.proposed_amount || circle.proposed_amount === 0) && (
+                            {circle.creator_id === getCurrentUser()?.id && (!circle.proposed_amount || circle.proposed_amount === 0) && (
                                 <button
                                     onClick={() => setShowProposeModal(true)}
                                     className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 text-xs font-bold rounded-lg transition-colors border border-indigo-100"

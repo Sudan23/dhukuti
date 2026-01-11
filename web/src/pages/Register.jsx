@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '../lib/api';
+import { setAuth } from '../utils/auth';
 import { Loader2 } from 'lucide-react';
 
 export default function Register() {
@@ -23,11 +25,13 @@ export default function Register() {
                 password,
             });
 
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+            setAuth(response.data.token, response.data.user);
+            toast.success(`Welcome to Dhukuti, ${response.data.user.name}!`);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to register');
+            const errorMsg = err.response?.data?.error || 'Failed to register';
+            setError(errorMsg);
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }

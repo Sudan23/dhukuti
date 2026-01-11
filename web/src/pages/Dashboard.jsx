@@ -1,68 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../lib/api';
+import { useCircles } from '../hooks/useCircles';
+import { getCurrentUser } from '../utils/auth';
 import CreateCircleModal from '../components/CreateCircleModal';
+import CircleCardSkeleton from '../components/skeletons/CircleCardSkeleton';
 import { Plus, Users, Wallet, AlertCircle } from 'lucide-react';
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const [user, setUser] = useState({});
-    const [circles, setCircles] = useState([]);
+    const { circles, loading, refetch } = useCircles();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (!userData.id) {
-            navigate('/login');
-            return;
-        }
-        setUser(userData);
-        fetchCircles();
-    }, [navigate]);
+        setUser(getCurrentUser());
+    }, []);
 
-    const fetchCircles = async () => {
-        try {
-            const response = await api.get('/circles');
-            setCircles(response.data || []);
-        } catch (err) {
-            console.error('Failed to fetch circles', err);
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-    };
 
     return (
         <div className="min-h-screen bg-slate-50">
-            <nav className="bg-white border-b border-slate-200 px-8 py-4">
-                <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">D</div>
-                        <span className="text-xl font-bold text-slate-900">Dhukuti</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-slate-600">Hi, {user.name}</span>
-                        <button
-                            onClick={() => navigate('/profile')}
-                            className="px-4 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
-                        >
-                            My Profile
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-                        >
-                            Sign Out
-                        </button>
-                    </div>
-                </div>
-            </nav>
+
 
             <main className="max-w-7xl mx-auto p-8">
                 {/* Notifications */}
@@ -103,8 +61,10 @@ export default function Dashboard() {
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center p-12">
-                        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <CircleCardSkeleton key={i} />
+                        ))}
                     </div>
                 ) : circles.length === 0 ? (
                     <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
@@ -161,7 +121,7 @@ export default function Dashboard() {
             <CreateCircleModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={fetchCircles}
+                onSuccess={refetch}
             />
         </div>
     );

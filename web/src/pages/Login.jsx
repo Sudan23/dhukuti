@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import api from '../lib/api';
-import { cn } from '../lib/utils';
+import { setAuth } from '../utils/auth';
 import { Loader2 } from 'lucide-react';
 
 export default function Login() {
@@ -22,11 +23,13 @@ export default function Login() {
                 password,
             });
 
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+            setAuth(response.data.token, response.data.user);
+            toast.success(`Welcome back, ${response.data.user.name}!`);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to login');
+            const errorMsg = err.response?.data?.error || 'Failed to login';
+            setError(errorMsg);
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }

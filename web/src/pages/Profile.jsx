@@ -1,20 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { getCurrentUser } from '../utils/auth';
 import { User, Mail, Hash, Copy, Check, ArrowLeft } from 'lucide-react';
 
 export default function Profile() {
-    const navigate = useNavigate();
     const [user, setUser] = useState({});
     const [copied, setCopied] = useState(false);
 
     useEffect(() => {
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (!userData.id) {
-            navigate('/login');
-            return;
-        }
-        setUser(userData);
-    }, [navigate]);
+        setUser(getCurrentUser());
+    }, []);
 
     const copyUserId = () => {
         navigator.clipboard.writeText(user.id?.toString() || '');
@@ -22,28 +17,11 @@ export default function Profile() {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-    };
+
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
-            <nav className="bg-white border-b border-slate-200 px-8 py-4">
-                <div className="max-w-4xl mx-auto flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">D</div>
-                        <span className="text-xl font-bold text-slate-900">Dhukuti</span>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-                    >
-                        Sign Out
-                    </button>
-                </div>
-            </nav>
+
 
             <main className="max-w-4xl mx-auto p-8">
                 <Link to="/dashboard" className="inline-flex items-center text-slate-500 hover:text-slate-900 mb-6 transition-colors">

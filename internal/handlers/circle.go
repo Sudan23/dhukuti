@@ -408,16 +408,69 @@ func (h *CircleHandler) ListCircles(c *gin.Context) {
 		return
 	}
 
+	// Collect all circle IDs for batch queries
+	circleIDs := make([]uint, len(circles))
+	for i, circle := range circles {
+		circleIDs[i] = circle.ID
+	}
+
+	// Batch fetch all member statuses for all circles
+	var allMemberStatuses []models.CircleMember
+	if len(circleIDs) > 0 {
+		database.DB.Where("circle_id IN ?", circleIDs).Find(&allMemberStatuses)
+	}
+
+	// Group member statuses by circle ID
+	memberStatusByCircle := make(map[uint][]models.CircleMember)
+	for _, ms := range allMemberStatuses {
+		memberStatusByCircle[ms.CircleID] = append(memberStatusByCircle[ms.CircleID], ms)
+	}
+
+	// Batch fetch pending approvals for all circles
+	var allPendingApprovals []struct {
+		CircleID      uint
+		PendingUserID uint
+	}
+	if len(circleIDs) > 0 {
+		database.DB.Model(&models.MemberApproval{}).
+			Select("circle_id, pending_user_id").
+			Where("circle_id IN ? AND approver_user_id = ? AND approved = ?", circleIDs, userID, false).
+			Find(&allPendingApprovals)
+	}
+
+	// Group pending approvals by circle ID
+	pendingApprovalsByCircle := make(map[uint][]uint)
+	for _, pa := range allPendingApprovals {
+		pendingApprovalsByCircle[pa.CircleID] = append(pendingApprovalsByCircle[pa.CircleID], pa.PendingUserID)
+	}
+
+	// Batch fetch amount approval counts for all circles
+	var amountApprovalCounts []struct {
+		CircleID uint
+		Count    int64
+	}
+	if len(circleIDs) > 0 {
+		database.DB.Model(&models.AmountApproval{}).
+			Select("circle_id, COUNT(*) as count").
+			Where("circle_id IN ? AND approver_id = ? AND approved = ?", circleIDs, userID, false).
+			Group("circle_id").
+			Find(&amountApprovalCounts)
+	}
+
+	// Create a map for quick lookup
+	amountApprovalCountMap := make(map[uint]int64)
+	for _, aac := range amountApprovalCounts {
+		amountApprovalCountMap[aac.CircleID] = aac.Count
+	}
+
 	// Convert to response format
 	response := make([]CircleResponse, len(circles))
 	for i, circle := range circles {
-		// Fetch members with their status for this circle
-		var memberStatus []models.CircleMember
-		database.DB.Where("circle_id = ?", circle.ID).Find(&memberStatus)
+		memberStatuses := memberStatusByCircle[circle.ID]
 
 		statusMap := make(map[uint]string)
 		roleMap := make(map[uint]string)
-		for _, ms := range memberStatus {
+		for _, ms := range memberStatuses {
 			statusMap[ms.UserID] = ms.Status
 			roleMap[ms.UserID] = ms.Role
 		}
@@ -433,18 +486,6 @@ func (h *CircleHandler) ListCircles(c *gin.Context) {
 			}
 		}
 
-		// Fetch pending member approvals for the current user in this circle
-		var pendingApprovals []uint
-		database.DB.Model(&models.MemberApproval{}).
-			Where("circle_id = ? AND approver_user_id = ? AND approved = ?", circle.ID, userID, false).
-			Pluck("pending_user_id", &pendingApprovals)
-
-		// Fetch pending amount approvals for the current user
-		var amountApprovalCount int64
-		database.DB.Model(&models.AmountApproval{}).
-			Where("circle_id = ? AND approver_id = ? AND approved = ?", circle.ID, userID, false).
-			Count(&amountApprovalCount)
-
 		response[i] = CircleResponse{
 			ID:                  circle.ID,
 			Name:                circle.Name,
@@ -453,10 +494,10 @@ func (h *CircleHandler) ListCircles(c *gin.Context) {
 			ProposedAmount:      circle.ProposedAmount,
 			CreatorID:           circle.CreatorID,
 			Members:             members,
-			PendingApprovals:    pendingApprovals,
-			NeedsAmountApproval: amountApprovalCount > 0,
+			PendingApprovals:    pendingApprovalsByCircle[circle.ID],
+			NeedsAmountApproval: amountApprovalCountMap[circle.ID] > 0,
 		}
-		log.Printf("[ListCircles] Circle %d: Amount=%d, Proposed=%d, NeedsApproval=%v", circle.ID, circle.AmountPerMember, circle.ProposedAmount, amountApprovalCount > 0)
+		log.Printf("[ListCircles] Circle %d: Amount=%d, Proposed=%d, NeedsApproval=%v", circle.ID, circle.AmountPerMember, circle.ProposedAmount, amountApprovalCountMap[circle.ID] > 0)
 	}
 
 	c.JSON(http.StatusOK, response)

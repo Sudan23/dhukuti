@@ -50,14 +50,17 @@ type UserResponse struct {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, models.NewErrorResponse(err.Error(), models.ErrCodeValidation))
 		return
 	}
 
 	// Check if user already exists
 	var existingUser models.User
 	if err := database.DB.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "User with this email already exists"})
+		c.JSON(http.StatusConflict, models.NewErrorResponse(
+			"User with this email already exists",
+			models.ErrCodeAlreadyExists,
+		))
 		return
 	}
 
@@ -68,19 +71,28 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if err := user.HashPassword(req.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		c.JSON(http.StatusInternalServerError, models.NewErrorResponse(
+			"Failed to hash password",
+			models.ErrCodeInternal,
+		))
 		return
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		c.JSON(http.StatusInternalServerError, models.NewErrorResponse(
+			"Failed to create user",
+			models.ErrCodeDatabase,
+		))
 		return
 	}
 
 	// Generate JWT token
 	token, err := middleware.GenerateToken(user.ID, user.Email, h.cfg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		c.JSON(http.StatusInternalServerError, models.NewErrorResponse(
+			"Failed to generate token",
+			models.ErrCodeInternal,
+		))
 		return
 	}
 
@@ -98,27 +110,30 @@ func (h *AuthHandler) Register(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, models.NewErrorResponse(err.Error(), models.ErrCodeValidation))
 		return
 	}
 
 	// Find user by email
 	var user models.User
 	if err := database.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		c.JSON(http.StatusUnauthorized, models.ErrInvalidCredentials)
 		return
 	}
 
 	// Check password
 	if err := user.CheckPassword(req.Password); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		c.JSON(http.StatusUnauthorized, models.ErrInvalidCredentials)
 		return
 	}
 
 	// Generate JWT token
 	token, err := middleware.GenerateToken(user.ID, user.Email, h.cfg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		c.JSON(http.StatusInternalServerError, models.NewErrorResponse(
+			"Failed to generate token",
+			models.ErrCodeInternal,
+		))
 		return
 	}
 
